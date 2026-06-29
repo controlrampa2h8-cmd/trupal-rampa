@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Rampa - TRUPAL</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h2>🚛 Control Rampa</h2>
+        <a href="index.html">← Salir</a>
+      </div>
+
+      <div id="mensaje"></div>
+
+      <form id="formulario" onsubmit="return false;">
+        <div class="form-group">
+          <label>Placa <span class="required">*</span></label>
+          <input type="text" id="placa" placeholder="Ej: ABC-123" required>
+        </div>
+
+        <div class="form-group">
+          <label>Pedido</label>
+          <input type="text" id="pedido" placeholder="Opcional">
+        </div>
+
+        <div class="form-group">
+          <label>Material <span class="required">*</span></label>
+          <input type="text" id="material" placeholder="Ej: Cartón corrugado 3mm" required>
+        </div>
+
+        <div class="form-group relative">
+          <label>Cliente <span class="required">*</span></label>
+          <input type="text" id="busquedaCliente" placeholder="Escribe para buscar..." autocomplete="off">
+          <div id="resultados" class="search-results" style="display:none;"></div>
+          <div id="clienteSeleccionado" class="selected-client"></div>
+          <input type="hidden" id="clienteId">
+        </div>
+
+        <div class="form-group">
+          <label>Almacén <span class="required">*</span></label>
+          <select id="almacen" required>
+            <option value="">Selecciona...</option>
+            <option value="AlmHuachipa8">AlmHuachipa8</option>
+            <option value="AlmHuachipa9">AlmHuachipa9</option>
+            <option value="AlmHuachipa13">AlmHuachipa13</option>
+            <option value="AlmHuachipa15">AlmHuachipa15</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="estado">
+            <option value="en espera">en espera</option>
+            <option value="prealistando la mercaderia">prealistando la mercaderia</option>
+            <option value="cargando unidad">cargando unidad</option>
+            <option value="fin del cargio">fin del cargio</option>
+          </select>
+        </div>
+
+        <button onclick="guardar()" id="btnGuardar" class="btn-guardar">Guardar Registro</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Verificar rol
+    if (localStorage.getItem('rol_trupal') !== 'control') {
+      window.location.href = 'index.html';
+    }
+
+    let clientes = [];
+
+    // Cargar clientes al iniciar
+    async function cargarClientes() {
+      const { data, error } = await supabase.from('clientes').select('*').order('nombre');
+      if (data) clientes = data;
+    }
+    cargarClientes();
+
+    // Búsqueda de clientes
+    const busquedaInput = document.getElementById('busquedaCliente');
+    const resultadosDiv = document.getElementById('resultados');
+    const clienteIdInput = document.getElementById('clienteId');
+    const seleccionadoDiv = document.getElementById('clienteSeleccionado');
+
+    busquedaInput.addEventListener('input', function() {
+      const texto = this.value.toLowerCase();
+      if (!texto) {
+        resultadosDiv.style.display = 'none';
+        clienteIdInput.value = '';
+        seleccionadoDiv.textContent = '';
+        return;
+      }
+      const filtrados = clientes.filter(c => c.nombre.toLowerCase().includes(texto));
+      if (filtrados.length === 0) {
+        resultadosDiv.style.display = 'none';
+        return;
+      }
+      resultadosDiv.innerHTML = filtrados.map(c => 
+        `<button type="button" class="search-item" onclick="seleccionarCliente('${c.id}', '${c.nombre}')">${c.nombre}</button>`
+      ).join('');
+      resultadosDiv.style.display = 'block';
+    });
+
+    function seleccionarCliente(id, nombre) {
+      clienteIdInput.value = id;
+      busquedaInput.value = nombre;
+      seleccionadoDiv.textContent = '✓ ' + nombre;
+      resultadosDiv.style.display = 'none';
+    }
+
+    async function guardar() {
+      const placa = document.getElementById('placa').value.trim().toUpperCase();
+      const pedido = document.getElementById('pedido').value.trim();
+      const material = document.getElementById('material').value.trim();
+      const clienteId = document.getElementById('clienteId').value;
+      const almacen = document.getElementById('almacen').value;
+      const estado = document.getElementById('estado').value;
+
+      if (!placa || !material || !clienteId || !almacen) {
+        mostrarMensaje('Completa los campos obligatorios', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnGuardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      const { error } = await supabase.from('cargas').insert({
+        placa: placa,
+        pedido: pedido || null,
+        material: material,
+        cliente_id: clienteId,
+        almacen: almacen,
+        estado: estado,
+        creado_por: 'control_rampa'
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Guardar Registro';
+
+      if (error) {
+        mostrarMensaje('Error: ' + error.message, 'error');
+      } else {
+        mostrarMensaje('✅ Registro guardado correctamente', 'ok');
+        // Limpiar formulario
+        document.getElementById('placa').value = '';
+        document.getElementById('pedido').value = '';
+        document.getElementById('material').value = '';
+        document.getElementById('clienteId').value = '';
+        document.getElementById('busquedaCliente').value = '';
+        document.getElementById('clienteSeleccionado').textContent = '';
+        document.getElementById('almacen').value = '';
+        document.getElementById('estado').value = 'en espera';
+      }
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const div = document.getElementById('mensaje');
+      div.className = 'mensaje ' + tipo;
+      div.textContent = texto;
+      if (tipo === 'ok') setTimeout(() => { div.textContent = ''; div.className = ''; }, 3000);
+    }
+  </script>
+</body>
+</html>
