@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRUPAL - Control de Rampa</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card center">
+      <h1>TRUPAL S.A.</h1>
+      <p class="subtitle">Control de Rampa</p>
+      
+      <div class="rol-buttons">
+        <button onclick="ir('control')" class="btn-control">
+          🚛 Control Rampa
+        </button>
+        <button onclick="ir('programador')" class="btn-programador">
+          🖥️ Programador
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function ir(rol) {
+      localStorage.setItem('rol_trupal', rol);
+      window.location.href = rol + '.html';
+    }
+  </script>
+</body>
+</html>
