@@ -5,47 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Programador - TRUPAL</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
 </head>
 <body>
+
   <div class="container">
     <div class="card">
+
       <div class="header">
         <div>
           <h2 style="color:#047857;">🖥️ Dashboard Programador</h2>
-          <p style="font-size:12px;color:#6b7280;" id="ultimaActualizacion">Actualizado: --:--:--</p>
+          <p style="font-size:12px;color:#6b7280;" id="ultimaActualizacion">
+            Actualizado: --:--:--
+          </p>
         </div>
         <a href="index.html">← Cambiar rol</a>
       </div>
+
+      <div id="mensaje"></div>
 
       <div class="resumen">
         <div class="resumen-card estado-espera">
           <div class="numero" id="c-espera">0</div>
           <div class="label">en espera</div>
         </div>
+
         <div class="resumen-card estado-prealistando">
           <div class="numero" id="c-prealistando">0</div>
           <div class="label">prealistando</div>
         </div>
+
         <div class="resumen-card estado-cargando">
           <div class="numero" id="c-cargando">0</div>
           <div class="label">cargando</div>
         </div>
+
         <div class="resumen-card estado-fin">
           <div class="numero" id="c-fin">0</div>
-          <div class="label">fin del cargio</div>
+          <div class="label">fin de carga</div>
         </div>
       </div>
 
       <div class="filtros">
         <input type="text" id="busqueda" placeholder="🔍 Buscar placa, material, cliente o pedido...">
+
         <select id="filtroAlmacen">
-          <option value="Todos">Todos</option>
+          <option value="Todos">Todos los almacenes</option>
           <option value="AlmHuachipa8">AlmHuachipa8</option>
           <option value="AlmHuachipa9">AlmHuachipa9</option>
           <option value="AlmHuachipa13">AlmHuachipa13</option>
           <option value="AlmHuachipa15">AlmHuachipa15</option>
+        </select>
+
+        <select id="filtroEstado">
+          <option value="Todos">Todos los estados</option>
+          <option value="en espera">en espera</option>
+          <option value="prealistando mercadería">prealistando mercadería</option>
+          <option value="cargando unidad">cargando unidad</option>
+          <option value="fin de carga">fin de carga</option>
         </select>
       </div>
 
@@ -60,13 +79,18 @@
               <th>Almacén</th>
               <th>Estado</th>
               <th>Hora</th>
+              <th>Acciones</th>
             </tr>
           </thead>
+
           <tbody id="tabla">
-            <tr><td colspan="7" class="sin-registros">Cargando...</td></tr>
+            <tr>
+              <td colspan="8" class="sin-registros">Cargando...</td>
+            </tr>
           </tbody>
         </table>
       </div>
+
     </div>
   </div>
 
@@ -76,80 +100,231 @@
     }
 
     let cargas = [];
-    const colores = {
+
+    const estados = [
+      'en espera',
+      'prealistando mercadería',
+      'cargando unidad',
+      'fin de carga'
+    ];
+
+    const clasesEstado = {
       'en espera': 'estado-espera',
-      'prealistando la mercaderia': 'estado-prealistando',
+      'prealistando mercadería': 'estado-prealistando',
       'cargando unidad': 'estado-cargando',
-      'fin del cargio': 'estado-fin'
+      'fin de carga': 'estado-fin'
     };
 
     async function cargarDatos() {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('cargas')
-        .select('*, cliente:cliente_id(nombre)')
+        .select(`
+          id,
+          placa,
+          pedido,
+          material,
+          almacen,
+          estado,
+          creado_por,
+          created_at,
+          updated_at,
+          cliente:cliente_id(nombre)
+        `)
         .order('created_at', { ascending: false });
 
-      if (data) {
-        cargas = data;
-        document.getElementById('ultimaActualizacion').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
-        renderizar();
-      }
-    }
-
-    function renderizar() {
-      const busqueda = document.getElementById('busqueda').value.toLowerCase();
-      const almacen = document.getElementById('filtroAlmacen').value;
-
-      // Contadores
-      const estados = ['en espera', 'prealistando la mercaderia', 'cargando unidad', 'fin del cargio'];
-      estados.forEach(e => {
-        document.getElementById('c-' + e.replace(/ /g, '-').replace('la-mercaderia', '').replace('del-cargio', '').replace('--', '-')).textContent = cargas.filter(c => c.estado === e).length;
-      });
-
-      // Filtros
-      const filtradas = cargas.filter(c => {
-        const matchAlmacen = almacen === 'Todos' || c.almacen === almacen;
-        const matchBusqueda = !busqueda ||
-          c.placa.toLowerCase().includes(busqueda) ||
-          c.material.toLowerCase().includes(busqueda) ||
-          (c.cliente?.nombre && c.cliente.nombre.toLowerCase().includes(busqueda)) ||
-          (c.pedido && c.pedido.toLowerCase().includes(busqueda));
-        return matchAlmacen && matchBusqueda;
-      });
-
-      const tbody = document.getElementById('tabla');
-      if (filtradas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="sin-registros">No hay registros</td></tr>';
+      if (error) {
+        mostrarMensaje('Error al cargar datos: ' + error.message, 'error');
         return;
       }
 
-      tbody.innerHTML = filtradas.map(c => `
+      cargas = data || [];
+
+      document.getElementById('ultimaActualizacion').textContent =
+        'Actualizado: ' + new Date().toLocaleTimeString();
+
+      renderizar();
+    }
+
+    function renderizar() {
+      const textoBusqueda = document.getElementById('busqueda').value.toLowerCase();
+      const almacenSeleccionado = document.getElementById('filtroAlmacen').value;
+      const estadoSeleccionado = document.getElementById('filtroEstado').value;
+
+      actualizarContadores();
+
+      const filtradas = cargas.filter(carga => {
+        const clienteNombre = carga.cliente?.nombre || '';
+
+        const coincideBusqueda =
+          !textoBusqueda ||
+          carga.placa.toLowerCase().includes(textoBusqueda) ||
+          carga.material.toLowerCase().includes(textoBusqueda) ||
+          clienteNombre.toLowerCase().includes(textoBusqueda) ||
+          (carga.pedido && carga.pedido.toLowerCase().includes(textoBusqueda));
+
+        const coincideAlmacen =
+          almacenSeleccionado === 'Todos' ||
+          carga.almacen === almacenSeleccionado;
+
+        const coincideEstado =
+          estadoSeleccionado === 'Todos' ||
+          carga.estado === estadoSeleccionado;
+
+        return coincideBusqueda && coincideAlmacen && coincideEstado;
+      });
+
+      const tbody = document.getElementById('tabla');
+
+      if (filtradas.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="sin-registros">No hay registros</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtradas.map(carga => `
         <tr>
-          <td style="font-family:monospace;font-weight:bold;">${c.placa}</td>
-          <td style="color:#6b7280;">${c.pedido || '-'}</td>
-          <td>${c.material}</td>
-          <td style="font-weight:500;">${c.cliente?.nombre || ''}</td>
-          <td><span class="badge badge-almacen">${c.almacen.replace('AlmHuachipa', 'HU')}</span></td>
-          <td><span class="badge ${colores[c.estado]}">${c.estado}</span></td>
-          <td class="hora">${new Date(c.created_at).toLocaleTimeString()}</td>
+          <td style="font-family:monospace;font-weight:bold;">
+            ${carga.placa}
+          </td>
+
+          <td style="color:#6b7280;">
+            ${carga.pedido || '-'}
+          </td>
+
+          <td>
+            ${carga.material}
+          </td>
+
+          <td style="font-weight:500;">
+            ${carga.cliente?.nombre || 'Sin cliente'}
+          </td>
+
+          <td>
+            <span class="badge badge-almacen">
+              ${carga.almacen.replace('AlmHuachipa', 'HU')}
+            </span>
+          </td>
+
+          <td>
+            <span class="badge ${clasesEstado[carga.estado]}">
+              ${carga.estado}
+            </span>
+          </td>
+
+          <td class="hora">
+            ${formatearFecha(carga.created_at)}
+          </td>
+
+          <td>
+            ${crearSelectorEstado(carga)}
+          </td>
         </tr>
       `).join('');
     }
 
-    // Eventos
+    function actualizarContadores() {
+      document.getElementById('c-espera').textContent =
+        cargas.filter(c => c.estado === 'en espera').length;
+
+      document.getElementById('c-prealistando').textContent =
+        cargas.filter(c => c.estado === 'prealistando mercadería').length;
+
+      document.getElementById('c-cargando').textContent =
+        cargas.filter(c => c.estado === 'cargando unidad').length;
+
+      document.getElementById('c-fin').textContent =
+        cargas.filter(c => c.estado === 'fin de carga').length;
+    }
+
+    function crearSelectorEstado(carga) {
+      return `
+        <select onchange="actualizarEstado('${carga.id}', '${carga.estado}', this.value)">
+          ${estados.map(estado => `
+            <option value="${estado}" ${estado === carga.estado ? 'selected' : ''}>
+              ${estado}
+            </option>
+          `).join('')}
+        </select>
+      `;
+    }
+
+    async function actualizarEstado(idCarga, estadoAnterior, estadoNuevo) {
+      if (estadoAnterior === estadoNuevo) return;
+
+      const { error: errorUpdate } = await db
+        .from('cargas')
+        .update({
+          estado: estadoNuevo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', idCarga);
+
+      if (errorUpdate) {
+        mostrarMensaje('Error al actualizar estado: ' + errorUpdate.message, 'error');
+        cargarDatos();
+        return;
+      }
+
+      await db
+        .from('historial_cargas')
+        .insert({
+          carga_id: idCarga,
+          estado_anterior: estadoAnterior,
+          estado_nuevo: estadoNuevo,
+          cambiado_por: 'programador'
+        });
+
+      mostrarMensaje('✅ Estado actualizado correctamente.', 'ok');
+      cargarDatos();
+    }
+
+    function formatearFecha(fecha) {
+      if (!fecha) return '-';
+
+      const d = new Date(fecha);
+
+      return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const div = document.getElementById('mensaje');
+      div.className = 'mensaje ' + tipo;
+      div.textContent = texto;
+
+      if (tipo === 'ok') {
+        setTimeout(() => {
+          div.textContent = '';
+          div.className = '';
+        }, 3000);
+      }
+    }
+
     document.getElementById('busqueda').addEventListener('input', renderizar);
     document.getElementById('filtroAlmacen').addEventListener('change', renderizar);
+    document.getElementById('filtroEstado').addEventListener('change', renderizar);
 
-    // Carga inicial
     cargarDatos();
 
-    // Realtime
-    supabase.channel('cargas_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargas' }, () => cargarDatos())
+    db.channel('cargas_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cargas'
+        },
+        () => cargarDatos()
+      )
       .subscribe();
 
-    // Refresco cada 10 segundos
     setInterval(cargarDatos, 10000);
   </script>
+
 </body>
 </html>
