@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Programador - TRUPAL</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div>
+          <h2 style="color:#047857;">🖥️ Dashboard Programador</h2>
+          <p style="font-size:12px;color:#6b7280;" id="ultimaActualizacion">Actualizado: --:--:--</p>
+        </div>
+        <a href="index.html">← Cambiar rol</a>
+      </div>
+
+      <div class="resumen">
+        <div class="resumen-card estado-espera">
+          <div class="numero" id="c-espera">0</div>
+          <div class="label">en espera</div>
+        </div>
+        <div class="resumen-card estado-prealistando">
+          <div class="numero" id="c-prealistando">0</div>
+          <div class="label">prealistando</div>
+        </div>
+        <div class="resumen-card estado-cargando">
+          <div class="numero" id="c-cargando">0</div>
+          <div class="label">cargando</div>
+        </div>
+        <div class="resumen-card estado-fin">
+          <div class="numero" id="c-fin">0</div>
+          <div class="label">fin del cargio</div>
+        </div>
+      </div>
+
+      <div class="filtros">
+        <input type="text" id="busqueda" placeholder="🔍 Buscar placa, material, cliente o pedido...">
+        <select id="filtroAlmacen">
+          <option value="Todos">Todos</option>
+          <option value="AlmHuachipa8">AlmHuachipa8</option>
+          <option value="AlmHuachipa9">AlmHuachipa9</option>
+          <option value="AlmHuachipa13">AlmHuachipa13</option>
+          <option value="AlmHuachipa15">AlmHuachipa15</option>
+        </select>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Placa</th>
+              <th>Pedido</th>
+              <th>Material</th>
+              <th>Cliente</th>
+              <th>Almacén</th>
+              <th>Estado</th>
+              <th>Hora</th>
+            </tr>
+          </thead>
+          <tbody id="tabla">
+            <tr><td colspan="7" class="sin-registros">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (localStorage.getItem('rol_trupal') !== 'programador') {
+      window.location.href = 'index.html';
+    }
+
+    let cargas = [];
+    const colores = {
+      'en espera': 'estado-espera',
+      'prealistando la mercaderia': 'estado-prealistando',
+      'cargando unidad': 'estado-cargando',
+      'fin del cargio': 'estado-fin'
+    };
+
+    async function cargarDatos() {
+      const { data, error } = await supabase
+        .from('cargas')
+        .select('*, cliente:cliente_id(nombre)')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        cargas = data;
+        document.getElementById('ultimaActualizacion').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
+        renderizar();
+      }
+    }
+
+    function renderizar() {
+      const busqueda = document.getElementById('busqueda').value.toLowerCase();
+      const almacen = document.getElementById('filtroAlmacen').value;
+
+      // Contadores
+      const estados = ['en espera', 'prealistando la mercaderia', 'cargando unidad', 'fin del cargio'];
+      estados.forEach(e => {
+        document.getElementById('c-' + e.replace(/ /g, '-').replace('la-mercaderia', '').replace('del-cargio', '').replace('--', '-')).textContent = cargas.filter(c => c.estado === e).length;
+      });
+
+      // Filtros
+      const filtradas = cargas.filter(c => {
+        const matchAlmacen = almacen === 'Todos' || c.almacen === almacen;
+        const matchBusqueda = !busqueda ||
+          c.placa.toLowerCase().includes(busqueda) ||
+          c.material.toLowerCase().includes(busqueda) ||
+          (c.cliente?.nombre && c.cliente.nombre.toLowerCase().includes(busqueda)) ||
+          (c.pedido && c.pedido.toLowerCase().includes(busqueda));
+        return matchAlmacen && matchBusqueda;
+      });
+
+      const tbody = document.getElementById('tabla');
+      if (filtradas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="sin-registros">No hay registros</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtradas.map(c => `
+        <tr>
+          <td style="font-family:monospace;font-weight:bold;">${c.placa}</td>
+          <td style="color:#6b7280;">${c.pedido || '-'}</td>
+          <td>${c.material}</td>
+          <td style="font-weight:500;">${c.cliente?.nombre || ''}</td>
+          <td><span class="badge badge-almacen">${c.almacen.replace('AlmHuachipa', 'HU')}</span></td>
+          <td><span class="badge ${colores[c.estado]}">${c.estado}</span></td>
+          <td class="hora">${new Date(c.created_at).toLocaleTimeString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Eventos
+    document.getElementById('busqueda').addEventListener('input', renderizar);
+    document.getElementById('filtroAlmacen').addEventListener('change', renderizar);
+
+    // Carga inicial
+    cargarDatos();
+
+    // Realtime
+    supabase.channel('cargas_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargas' }, () => cargarDatos())
+      .subscribe();
+
+    // Refresco cada 10 segundos
+    setInterval(cargarDatos, 10000);
+  </script>
+</body>
+</html>
