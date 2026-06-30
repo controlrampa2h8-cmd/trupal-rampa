@@ -2,62 +2,61 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 body {
   background: #f3f4f6;
-  color: #1f2937;
+  color: #111827;
 }
 
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 20px;
+}
+
+.inicio-container {
+  max-width: 500px;
 }
 
 .card {
-  background: white;
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  margin-top: 30px;
 }
 
 .center {
   text-align: center;
-  margin-top: 80px;
-  max-width: 420px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-top: 90px;
 }
 
 h1 {
   color: #1d4ed8;
   font-size: 30px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .subtitle {
   color: #6b7280;
-  margin-bottom: 32px;
-  font-size: 16px;
+  margin-bottom: 30px;
 }
 
 .rol-buttons {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 button {
   cursor: pointer;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 14px;
   font-size: 15px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: bold;
 }
 
 .btn-control {
@@ -86,9 +85,9 @@ button {
   background: #1d4ed8;
   color: white;
   width: 100%;
-  padding: 18px;
-  font-size: 18px;
-  margin-top: 8px;
+  padding: 16px;
+  font-size: 16px;
+  margin-top: 10px;
 }
 
 .btn-guardar:hover {
@@ -100,18 +99,6 @@ button {
   cursor: not-allowed;
 }
 
-.btn-estado {
-  background: #f3f4f6;
-  color: #374151;
-  padding: 8px 10px;
-  font-size: 12px;
-  border: 1px solid #d1d5db;
-}
-
-.btn-estado:hover {
-  background: #e5e7eb;
-}
-
 .header {
   display: flex;
   justify-content: space-between;
@@ -121,13 +108,12 @@ button {
 
 .header h2 {
   color: #1d4ed8;
-  font-size: 22px;
 }
 
 .header a {
   color: #6b7280;
-  font-size: 14px;
   text-decoration: none;
+  font-size: 14px;
 }
 
 .header a:hover {
@@ -140,8 +126,8 @@ button {
 
 label {
   display: block;
-  font-weight: 600;
   font-size: 14px;
+  font-weight: bold;
   margin-bottom: 6px;
   color: #374151;
 }
@@ -153,13 +139,12 @@ label {
 input,
 select {
   width: 100%;
-  padding: 14px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  outline: none;
-  transition: border-color 0.2s;
+  padding: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  font-size: 15px;
   background: white;
+  outline: none;
 }
 
 input:focus,
@@ -175,24 +160,25 @@ select:focus {
   position: absolute;
   width: 100%;
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
   margin-top: 4px;
   max-height: 220px;
   overflow-y: auto;
-  box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-  z-index: 10;
+  box-shadow: 0 8px 14px rgba(0,0,0,0.12);
+  z-index: 99;
 }
 
 .search-item {
-  padding: 12px 16px;
-  text-align: left;
+  display: block;
+  width: 100%;
+  padding: 12px;
   background: white;
   border: none;
-  width: 100%;
-  font-size: 14px;
-  cursor: pointer;
   border-radius: 0;
+  text-align: left;
+  font-size: 14px;
+  font-weight: normal;
 }
 
 .search-item:hover {
@@ -200,10 +186,10 @@ select:focus {
 }
 
 .selected-client {
-  color: #059669;
+  color: #047857;
   font-size: 13px;
+  font-weight: bold;
   margin-top: 6px;
-  font-weight: 600;
 }
 
 .mensaje {
@@ -211,7 +197,7 @@ select:focus {
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .mensaje.ok {
@@ -245,13 +231,13 @@ select:focus {
 }
 
 .resumen-card .numero {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: bold;
 }
 
 .resumen-card .label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: bold;
   text-transform: uppercase;
 }
 
@@ -300,15 +286,14 @@ table {
 
 th {
   background: #f3f4f6;
-  color: #4b5563;
+  color: #374151;
   text-align: left;
-  padding: 12px;
-  font-weight: 700;
+  padding: 11px;
   white-space: nowrap;
 }
 
 td {
-  padding: 12px;
+  padding: 11px;
   border-top: 1px solid #e5e7eb;
   vertical-align: middle;
 }
@@ -319,7 +304,7 @@ tr:hover {
 
 .badge {
   display: inline-block;
-  padding: 5px 12px;
+  padding: 5px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: bold;
@@ -341,31 +326,25 @@ tr:hover {
 
 .sin-registros {
   text-align: center;
-  padding: 40px;
+  padding: 35px;
   color: #9ca3af;
 }
 
-.acciones {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+.tabla-scroll {
+  overflow-x: auto;
 }
 
 @media (max-width: 768px) {
   .container {
-    padding: 8px;
+    padding: 10px;
   }
 
   .card {
     padding: 16px;
   }
 
-  table {
-    font-size: 12px;
-  }
-
-  th,
-  td {
-    padding: 8px;
+  .header {
+    align-items: flex-start;
+    gap: 10px;
   }
 }
