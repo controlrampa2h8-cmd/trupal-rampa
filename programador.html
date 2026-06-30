@@ -6,7 +6,7 @@
   <title>Dashboard Programador - TRUPAL</title>
   <link rel="stylesheet" href="style.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="supabase.js"></script>
 </head>
 <body>
@@ -17,10 +17,11 @@
       <div class="header">
         <div>
           <h2 style="color:#047857;">🖥️ Dashboard Programador</h2>
-          <p style="font-size:12px;color:#6b7280;" id="ultimaActualizacion">
+          <p id="ultimaActualizacion" style="font-size:12px;color:#6b7280;">
             Actualizado: --:--:--
           </p>
         </div>
+
         <a href="index.html">← Cambiar rol</a>
       </div>
 
@@ -68,7 +69,7 @@
         </select>
       </div>
 
-      <div style="overflow-x:auto;">
+      <div class="tabla-scroll">
         <table>
           <thead>
             <tr>
@@ -78,8 +79,8 @@
               <th>Cliente</th>
               <th>Almacén</th>
               <th>Estado</th>
-              <th>Hora</th>
-              <th>Acciones</th>
+              <th>Fecha/Hora</th>
+              <th>Cambiar estado</th>
             </tr>
           </thead>
 
@@ -118,22 +119,12 @@
     async function cargarDatos() {
       const { data, error } = await db
         .from('cargas')
-        .select(`
-          id,
-          placa,
-          pedido,
-          material,
-          almacen,
-          estado,
-          creado_por,
-          created_at,
-          updated_at,
-          cliente:cliente_id(nombre)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
         mostrarMensaje('Error al cargar datos: ' + error.message, 'error');
+        console.error(error);
         return;
       }
 
@@ -153,13 +144,11 @@
       actualizarContadores();
 
       const filtradas = cargas.filter(carga => {
-        const clienteNombre = carga.cliente?.nombre || '';
-
         const coincideBusqueda =
           !textoBusqueda ||
           carga.placa.toLowerCase().includes(textoBusqueda) ||
           carga.material.toLowerCase().includes(textoBusqueda) ||
-          clienteNombre.toLowerCase().includes(textoBusqueda) ||
+          carga.cliente_nombre.toLowerCase().includes(textoBusqueda) ||
           (carga.pedido && carga.pedido.toLowerCase().includes(textoBusqueda));
 
         const coincideAlmacen =
@@ -186,40 +175,29 @@
 
       tbody.innerHTML = filtradas.map(carga => `
         <tr>
-          <td style="font-family:monospace;font-weight:bold;">
-            ${carga.placa}
-          </td>
-
-          <td style="color:#6b7280;">
-            ${carga.pedido || '-'}
-          </td>
-
-          <td>
-            ${carga.material}
-          </td>
-
-          <td style="font-weight:500;">
-            ${carga.cliente?.nombre || 'Sin cliente'}
-          </td>
-
+          <td style="font-family:monospace;font-weight:bold;">${carga.placa}</td>
+          <td>${carga.pedido || '-'}</td>
+          <td>${carga.material}</td>
+          <td>${carga.cliente_nombre}</td>
           <td>
             <span class="badge badge-almacen">
               ${carga.almacen.replace('AlmHuachipa', 'HU')}
             </span>
           </td>
-
           <td>
             <span class="badge ${clasesEstado[carga.estado]}">
               ${carga.estado}
             </span>
           </td>
-
-          <td class="hora">
-            ${formatearFecha(carga.created_at)}
-          </td>
-
+          <td class="hora">${formatearFecha(carga.created_at)}</td>
           <td>
-            ${crearSelectorEstado(carga)}
+            <select onchange="actualizarEstado('${carga.id}', '${carga.estado}', this.value)">
+              ${estados.map(estado => `
+                <option value="${estado}" ${estado === carga.estado ? 'selected' : ''}>
+                  ${estado}
+                </option>
+              `).join('')}
+            </select>
           </td>
         </tr>
       `).join('');
@@ -239,18 +217,6 @@
         cargas.filter(c => c.estado === 'fin de carga').length;
     }
 
-    function crearSelectorEstado(carga) {
-      return `
-        <select onchange="actualizarEstado('${carga.id}', '${carga.estado}', this.value)">
-          ${estados.map(estado => `
-            <option value="${estado}" ${estado === carga.estado ? 'selected' : ''}>
-              ${estado}
-            </option>
-          `).join('')}
-        </select>
-      `;
-    }
-
     async function actualizarEstado(idCarga, estadoAnterior, estadoNuevo) {
       if (estadoAnterior === estadoNuevo) return;
 
@@ -264,11 +230,12 @@
 
       if (errorUpdate) {
         mostrarMensaje('Error al actualizar estado: ' + errorUpdate.message, 'error');
+        console.error(errorUpdate);
         cargarDatos();
         return;
       }
 
-      await db
+      const { error: errorHistorial } = await db
         .from('historial_cargas')
         .insert({
           carga_id: idCarga,
@@ -277,13 +244,15 @@
           cambiado_por: 'programador'
         });
 
+      if (errorHistorial) {
+        console.error('Error historial:', errorHistorial);
+      }
+
       mostrarMensaje('✅ Estado actualizado correctamente.', 'ok');
       cargarDatos();
     }
 
     function formatearFecha(fecha) {
-      if (!fecha) return '-';
-
       const d = new Date(fecha);
 
       return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {
@@ -299,8 +268,8 @@
 
       if (tipo === 'ok') {
         setTimeout(() => {
-          div.textContent = '';
           div.className = '';
+          div.textContent = '';
         }, 3000);
       }
     }
