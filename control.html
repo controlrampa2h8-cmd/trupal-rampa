@@ -6,13 +6,14 @@
   <title>Control de Rampa - TRUPAL</title>
   <link rel="stylesheet" href="style.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="supabase.js"></script>
 </head>
 <body>
 
   <div class="container">
     <div class="card">
+
       <div class="header">
         <h2>🚛 Control de Rampa</h2>
         <a href="index.html">← Salir</a>
@@ -20,11 +21,11 @@
 
       <div id="mensaje"></div>
 
-      <form id="formulario" onsubmit="return false;">
+      <form onsubmit="return false;">
 
         <div class="form-group">
           <label>Placa <span class="required">*</span></label>
-          <input type="text" id="placa" placeholder="Ejemplo: ABC-123" required>
+          <input type="text" id="placa" placeholder="Ejemplo: ABC-123">
         </div>
 
         <div class="form-group">
@@ -34,7 +35,7 @@
 
         <div class="form-group">
           <label>Material <span class="required">*</span></label>
-          <input type="text" id="material" placeholder="Ejemplo: Cartón corrugado" required>
+          <input type="text" id="material" placeholder="Ejemplo: Cartón corrugado">
         </div>
 
         <div class="form-group relative">
@@ -42,12 +43,14 @@
           <input type="text" id="busquedaCliente" placeholder="Escribe para buscar cliente..." autocomplete="off">
           <div id="resultados" class="search-results" style="display:none;"></div>
           <div id="clienteSeleccionado" class="selected-client"></div>
+
           <input type="hidden" id="clienteId">
+          <input type="hidden" id="clienteNombre">
         </div>
 
         <div class="form-group">
           <label>Almacén <span class="required">*</span></label>
-          <select id="almacen" required>
+          <select id="almacen">
             <option value="">Selecciona...</option>
             <option value="AlmHuachipa8">AlmHuachipa8</option>
             <option value="AlmHuachipa9">AlmHuachipa9</option>
@@ -66,11 +69,12 @@
           </select>
         </div>
 
-        <button onclick="guardar()" id="btnGuardar" class="btn-guardar">
+        <button id="btnGuardar" onclick="guardar()" class="btn-guardar">
           Guardar Registro
         </button>
 
       </form>
+
     </div>
   </div>
 
@@ -84,20 +88,33 @@
     const busquedaInput = document.getElementById('busquedaCliente');
     const resultadosDiv = document.getElementById('resultados');
     const clienteIdInput = document.getElementById('clienteId');
+    const clienteNombreInput = document.getElementById('clienteNombre');
     const seleccionadoDiv = document.getElementById('clienteSeleccionado');
 
     async function cargarClientes() {
-      const { data, error } = await db
-        .from('clientes')
-        .select('*')
-        .order('nombre', { ascending: true });
+      try {
+        const { data, error } = await db
+          .from('clientes')
+          .select('id, nombre')
+          .order('nombre', { ascending: true });
 
-      if (error) {
-        mostrarMensaje('Error al cargar clientes: ' + error.message, 'error');
-        return;
+        if (error) {
+          mostrarMensaje('Error al cargar clientes: ' + error.message, 'error');
+          console.error(error);
+          return;
+        }
+
+        clientes = data || [];
+        console.log('Clientes cargados:', clientes);
+
+        if (clientes.length === 0) {
+          mostrarMensaje('No hay clientes registrados en Supabase.', 'error');
+        }
+
+      } catch (err) {
+        mostrarMensaje('Error de conexión con Supabase.', 'error');
+        console.error(err);
       }
-
-      clientes = data || [];
     }
 
     cargarClientes();
@@ -106,6 +123,7 @@
       const texto = this.value.trim().toLowerCase();
 
       clienteIdInput.value = '';
+      clienteNombreInput.value = '';
       seleccionadoDiv.textContent = '';
 
       if (!texto) {
@@ -124,20 +142,21 @@
         return;
       }
 
-      resultadosDiv.innerHTML = filtrados.map(cliente => `
-        <button 
-          type="button" 
-          class="search-item" 
-          onclick="seleccionarCliente('${cliente.id}', '${cliente.nombre.replace(/'/g, "\\'")}')">
-          ${cliente.nombre}
-        </button>
-      `).join('');
+      resultadosDiv.innerHTML = filtrados.map(cliente => {
+        const nombreSeguro = cliente.nombre.replace(/'/g, "\\'");
+        return `
+          <button type="button" class="search-item" onclick="seleccionarCliente('${cliente.id}', '${nombreSeguro}')">
+            ${cliente.nombre}
+          </button>
+        `;
+      }).join('');
 
       resultadosDiv.style.display = 'block';
     });
 
     function seleccionarCliente(id, nombre) {
       clienteIdInput.value = id;
+      clienteNombreInput.value = nombre;
       busquedaInput.value = nombre;
       seleccionadoDiv.textContent = '✓ Cliente seleccionado: ' + nombre;
       resultadosDiv.style.display = 'none';
@@ -148,11 +167,12 @@
       const pedido = document.getElementById('pedido').value.trim();
       const material = document.getElementById('material').value.trim();
       const clienteId = document.getElementById('clienteId').value;
+      const clienteNombre = document.getElementById('clienteNombre').value;
       const almacen = document.getElementById('almacen').value;
       const estado = document.getElementById('estado').value;
 
-      if (!placa || !material || !clienteId || !almacen) {
-        mostrarMensaje('Completa todos los campos obligatorios.', 'error');
+      if (!placa || !material || !clienteId || !clienteNombre || !almacen) {
+        mostrarMensaje('Completa todos los campos obligatorios y selecciona un cliente de la lista.', 'error');
         return;
       }
 
@@ -167,6 +187,7 @@
           pedido: pedido || null,
           material: material,
           cliente_id: clienteId,
+          cliente_nombre: clienteNombre,
           almacen: almacen,
           estado: estado,
           creado_por: 'control_rampa'
@@ -177,6 +198,7 @@
 
       if (error) {
         mostrarMensaje('Error al guardar: ' + error.message, 'error');
+        console.error(error);
         return;
       }
 
@@ -189,10 +211,12 @@
       document.getElementById('pedido').value = '';
       document.getElementById('material').value = '';
       document.getElementById('clienteId').value = '';
+      document.getElementById('clienteNombre').value = '';
       document.getElementById('busquedaCliente').value = '';
       document.getElementById('clienteSeleccionado').textContent = '';
       document.getElementById('almacen').value = '';
       document.getElementById('estado').value = 'en espera';
+
       resultadosDiv.innerHTML = '';
       resultadosDiv.style.display = 'none';
     }
@@ -204,8 +228,8 @@
 
       if (tipo === 'ok') {
         setTimeout(() => {
-          div.textContent = '';
           div.className = '';
+          div.textContent = '';
         }, 3000);
       }
     }
